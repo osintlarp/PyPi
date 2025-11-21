@@ -137,6 +137,17 @@ def get_promo_channels(uid):
         return r.json().get("promotionChannels", {})
     return {}
 
+def get_friends_by_identifier(identifier):
+    if identifier.isdigit():
+        uid = identifier
+    else:
+        uid = search_by_username(identifier)
+    
+    if uid is None:
+        return {"error": "User not found"}
+    
+    return get_entity_list(uid, "friends")
+
 def get_user_info(identifier, use_cache=True, **options):
     info(f"Starting Roblox lookup: {identifier}")
     cached = read_cache(identifier)
@@ -183,9 +194,11 @@ def get_user_info(identifier, use_cache=True, **options):
     data["previous_usernames"] = get_previous_usernames(uid)
     data["groups"] = get_groups(uid)
     data["about_me"] = get_about_me(uid)
+    
     data["friends_list"] = get_entity_list(uid, "friends")
     data["followers_list"] = get_entity_list(uid, "followers")
     data["following_list"] = get_entity_list(uid, "followings")
+    
     presence = get_presence(uid)
     if presence:
         data["presence_status"] = USER_PRESENCE_MAP.get(presence["userPresenceType"])
