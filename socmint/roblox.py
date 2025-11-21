@@ -47,6 +47,9 @@ def get_csrf_token(cookie) -> str:
         if not xcsrf_token:
             error(f"An error occurred while getting the X-CSRF-TOKEN. Could be due to an invalid Roblox Cookie")
             return None
+
+        info(f"Got X-CSRF-TOKEN: {xcsrf_token}")
+        
         return xcsrf_token
     except Exception as e:
         error(f"Failed to fetch CSRF token: {e}")
@@ -108,8 +111,9 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
                 timeout=config.TIMEOUT
             )
             
-            if r.status_code in [200, 202]:
-                success(f"Report {i+1} sent successfully.")
+            if r.status_code in [200, 201]:
+                msg = r.json()
+                success(f"{msg}")
             else:
                 try:
                     err_msg = r.json()
