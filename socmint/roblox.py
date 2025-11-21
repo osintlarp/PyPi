@@ -34,10 +34,6 @@ ROBLOX_BADGE_TABLE = {
 }
 
 def get_csrf_token(cookie) -> str:
-    """
-    Fetches the X-CSRF-TOKEN required for authenticated POST requests.
-    """
-    # Ensure we don't verify SSL if config says so
     verify = config.VERIFY_SSL
     
     try:
@@ -65,11 +61,10 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
         return
     
     csrf_token = get_csrf_token(cookie)
-    info(f"Getting CSRF Token")
     if not csrf_token:
         return
 
-    url = "https://apis.roblox.com/abuse-reporting/v1/abuse-reporting"
+    url = "https://apis.roblox.com/abuse-reporting/v2/abuse-report"
     
     headers = {
         "content-type": "application/json;charset=utf-8",
@@ -85,7 +80,7 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
         "sec-fetch-dest": "empty"
     }
 
-    cookies = {
+    req_cookies = {
         ".ROBLOSECURITY": cookie,
         "GuestData": f"UserID={reporter_uid}", 
     }
@@ -95,19 +90,19 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
             "ENTRY_POINT": {"valueList": [{"data": "website"}]},
             "REPORTED_ABUSE_CATEGORY": {"valueList": [{"data": "dating"}]},
             "REPORTED_ABUSE_VECTOR": {"valueList": [{"data": "user_profile"}]},
-            "REPORTER_COMMENT": {"valueList": [{"data": "Inappropriate behavior"}]},
+            "REPORTER_COMMENT": {"valueList": [{"data": ""}]},
             "SUBMITTER_USER_ID": {"valueList": [{"data": str(reporter_uid)}]},
             "REPORT_TARGET_USER_ID": {"valueList": [{"data": str(target_uid)}]}
         }
     }
-
+    
     for i in range(total_reports):
         info(f"Sending report {i+1}/{total_reports} for {target_username}...")
         try:
             r = requests.post(
                 url,
                 headers=headers,
-                cookies=cookies,
+                cookies=req_cookies,
                 data=json.dumps(payload),
                 verify=config.VERIFY_SSL,
                 timeout=config.TIMEOUT
@@ -116,9 +111,13 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
             if r.status_code in [200, 202]:
                 success(f"Report {i+1} sent successfully.")
             else:
-                error(f"Report {i+1} failed: {r.status_code} {r.text}")
+                try:
+                    err_msg = r.json()
+                except:
+                    err_msg = r.text
+                error(f"Report {i+1} failed: {r.status_code} - {err_msg}")
                 
-            time.sleep(0.5) 
+            time.sleep(1.0)
             
         except Exception as e:
             error(f"Report request failed: {e}")
@@ -309,7 +308,7 @@ def get_user_info(identifier, use_cache=True, **options):
     data["previous_usernames"] = get_previous_usernames(uid)
     data["groups"] = get_groups(uid)
     data["about_me"] = get_about_me(uid)
-
+    
     data["friends_list"] = get_entity_list(uid, "friends", limit=limit)
     data["followers_list"] = get_entity_list(uid, "followers", limit=limit)
     data["following_list"] = get_entity_list(uid, "followings", limit=limit)
