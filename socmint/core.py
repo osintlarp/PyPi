@@ -11,3 +11,14 @@ class socmintPY:
         if pretty_print:
             print(json.dumps(data, indent=4, ensure_ascii=False))
         return data
+
+    def get_user_friends(self, identifier, pretty_print=False, service=None):
+        if service is None:
+            raise ValueError("Specify a service module such as socmint.roblox.")
+        
+        data = service.get_friends_by_identifier(identifier)
+        
+        if pretty_print:
+            print(json.dumps(data, indent=4, ensure_ascii=False))
+        return data
+
