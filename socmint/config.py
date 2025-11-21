@@ -1,0 +1,3 @@
+PROXY = None 
+TIMEOUT = 10
+VERIFY_SSL = True 
