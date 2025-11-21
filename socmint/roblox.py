@@ -34,6 +34,10 @@ ROBLOX_BADGE_TABLE = {
 }
 
 def get_csrf_token(cookie) -> str:
+    """
+    Fetches the X-CSRF-TOKEN required for authenticated POST requests.
+    """
+    # Ensure we don't verify SSL if config says so
     verify = config.VERIFY_SSL
     
     try:
@@ -54,17 +58,18 @@ def get_csrf_token(cookie) -> str:
 
 def report_user(target_username, cookie, reporter_uid, total_reports=1):
     info(f"Starting report process for {target_username}")
-
+    
     target_uid = search_by_username(target_username)
     if not target_uid:
         error(f"Cannot report {target_username}: User not found")
         return
-
+    
     csrf_token = get_csrf_token(cookie)
+    info(f"Getting CSRF Token")
     if not csrf_token:
         return
 
-    url = f"https://apis.roblox.com/abuse-reporting/v1/abuse-reporting/{target_uid}"
+    url = "https://apis.roblox.com/abuse-reporting/v1/abuse-reporting"
     
     headers = {
         "content-type": "application/json;charset=utf-8",
@@ -95,13 +100,12 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
             "REPORT_TARGET_USER_ID": {"valueList": [{"data": str(target_uid)}]}
         }
     }
-    
+
     for i in range(total_reports):
         info(f"Sending report {i+1}/{total_reports} for {target_username}...")
         try:
             r = requests.post(
-                "https://apis.roblox.com/abuse-reporting/v1/abuse-reporting", 
-                url="https://apis.roblox.com/abuse-reporting/v1/abuse-reporting",
+                url,
                 headers=headers,
                 cookies=cookies,
                 data=json.dumps(payload),
@@ -114,7 +118,7 @@ def report_user(target_username, cookie, reporter_uid, total_reports=1):
             else:
                 error(f"Report {i+1} failed: {r.status_code} {r.text}")
                 
-            time.sleep(0.5)
+            time.sleep(0.5) 
             
         except Exception as e:
             error(f"Report request failed: {e}")
@@ -305,7 +309,7 @@ def get_user_info(identifier, use_cache=True, **options):
     data["previous_usernames"] = get_previous_usernames(uid)
     data["groups"] = get_groups(uid)
     data["about_me"] = get_about_me(uid)
-    
+
     data["friends_list"] = get_entity_list(uid, "friends", limit=limit)
     data["followers_list"] = get_entity_list(uid, "followers", limit=limit)
     data["following_list"] = get_entity_list(uid, "followings", limit=limit)
