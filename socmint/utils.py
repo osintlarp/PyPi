@@ -1,6 +1,9 @@
 import requests
 import random
+import urllib3 
 from .cprint import info, error, success
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -22,7 +25,8 @@ def try_request(method, url, headers=None, cookies=None, json_payload=None):
             headers=headers,
             cookies=cookies,
             json=json_payload,
-            timeout=10
+            timeout=10,
+            verify=False  
         )
         success(f"Response {r.status_code} from {url}")
         return r, None
