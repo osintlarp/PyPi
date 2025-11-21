@@ -2,7 +2,7 @@ import json
 import os
 import sys
 import requests
-from .cprint import success, error
+from .cprint import success, error, info
 from . import config
 
 class socmintPY:
@@ -24,12 +24,19 @@ class socmintPY:
 
         try:
             url = "https://users.roblox.com/v1/users/authenticated"
-            headers = {"User-Agent": "Roblox/WinInet"} 
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Cookie": f".ROBLOSECURITY={cookie}"
+            }
             
+            verify = config.VERIFY_SSL
+            if not verify:
+                requests.packages.urllib3.disable_warnings()
+
             response = requests.get(
                 url, 
-                cookies={".ROBLOSECURITY": cookie},
-                verify=config.VERIFY_SSL,
+                headers=headers,
+                verify=verify,
                 timeout=config.TIMEOUT
             )
 
@@ -37,9 +44,9 @@ class socmintPY:
                 data = response.json()
                 self.logged_in_user = data.get("name")
                 self.logged_in_uid = data.get("id")
-                success(f"Logged in {self.logged_in_user}!")
+                success(f"Logged in as {self.logged_in_user} (ID: {self.logged_in_uid})")
             else:
-                error("Invalid cookie.")
+                error(f"Invalid cookie. Status: {response.status_code}")
                 if sys.platform == 'win32':
                     os.system("pause")
                 sys.exit(0)
@@ -71,7 +78,7 @@ class socmintPY:
         return data
 
     def report_user(self, username, pretty_print=True, service=None, total_reports=5):
-        if not self.logged_in_user:
+        if not self.logged_in_uid:
             error("You must initialize socmintPY(use_account=True) and set config.COOKIES to use this feature.")
             return
 
