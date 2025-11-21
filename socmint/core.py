@@ -7,18 +7,21 @@ class socmintPY:
     def get_user_basic_details(self, identifier, pretty_print=False, service=None, **options):
         if service is None:
             raise ValueError("Specify a service module such as socmint.roblox.")
+        
         data = service.get_user_info(identifier, **options)
+        
         if pretty_print:
             print(json.dumps(data, indent=4, ensure_ascii=False))
         return data
 
-    def get_user_friends(self, identifier, pretty_print=False, service=None):
+    def get_user_friends(self, identifier, pretty_print=False, service=None, limit=500):
         if service is None:
             raise ValueError("Specify a service module such as socmint.roblox.")
         
-        data = service.get_friends_by_identifier(identifier)
+        data = service.get_friends_by_identifier(identifier, limit=limit)
         
         if pretty_print:
             print(json.dumps(data, indent=4, ensure_ascii=False))
         return data
+
 
