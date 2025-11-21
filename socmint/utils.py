@@ -1,7 +1,8 @@
 import requests
 import random
-import urllib3 
+import urllib3
 from .cprint import info, error, success
+from . import config
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -18,6 +19,10 @@ def get_user_agent():
 
 def try_request(method, url, headers=None, cookies=None, json_payload=None):
     info(f"Request: {method.upper()} {url}")
+
+    if not config.VERIFY_SSL:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
     try:
         r = requests.request(
             method,
@@ -25,11 +30,13 @@ def try_request(method, url, headers=None, cookies=None, json_payload=None):
             headers=headers,
             cookies=cookies,
             json=json_payload,
-            timeout=10,
-            verify=False  
+            timeout=config.TIMEOUT,
+            proxies=config.PROXY,
+            verify=config.VERIFY_SSL
         )
         success(f"Response {r.status_code} from {url}")
         return r, None
     except Exception as e:
         error(f"Request failed: {e}")
         return None, str(e)
+
