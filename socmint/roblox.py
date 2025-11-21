@@ -3,10 +3,12 @@ import time
 import json
 from datetime import datetime, timezone
 import os
+import requests
 
 from .utils import try_request, get_user_agent
 from .cache import read_cache, write_cache
 from .cprint import info, error, success
+from . import config
 
 USER_PRESENCE_MAP = {
     0: "Offline",
@@ -30,6 +32,92 @@ ROBLOX_BADGE_TABLE = {
     17: "Official Model Maker",
     18: "Welcome To The Club"
 }
+
+def get_csrf_token(cookie) -> str:
+    verify = config.VERIFY_SSL
+    
+    try:
+        response = requests.post(
+            "https://auth.roblox.com/v2/logout", 
+            cookies={".ROBLOSECURITY": cookie},
+            verify=verify,
+            timeout=config.TIMEOUT
+        )
+        xcsrf_token = response.headers.get("x-csrf-token")
+        if not xcsrf_token:
+            error(f"An error occurred while getting the X-CSRF-TOKEN. Could be due to an invalid Roblox Cookie")
+            return None
+        return xcsrf_token
+    except Exception as e:
+        error(f"Failed to fetch CSRF token: {e}")
+        return None
+
+def report_user(target_username, cookie, reporter_uid, total_reports=1):
+    info(f"Starting report process for {target_username}")
+
+    target_uid = search_by_username(target_username)
+    if not target_uid:
+        error(f"Cannot report {target_username}: User not found")
+        return
+
+    csrf_token = get_csrf_token(cookie)
+    if not csrf_token:
+        return
+
+    url = f"https://apis.roblox.com/abuse-reporting/v1/abuse-reporting/{target_uid}"
+    
+    headers = {
+        "content-type": "application/json;charset=utf-8",
+        "accept": "application/json, text/plain, */*",
+        "sec-fetch-site": "same-site",
+        "priority": "u=3, i",
+        "accept-language": "en-US,en;q=0.9",
+        "sec-fetch-mode": "cors",
+        "origin": "https://www.roblox.com",
+        "user-agent": "Mozilla/5.0 (iPhone; iPhone17,5; CPU iPhone OS 26.1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Mobile/9B176 ROBLOX iOS App 2.698.937 Hybrid RobloxApp/2.698.937 (GlobalDist; AppleAppStore)",
+        "referer": "https://www.roblox.com/",
+        "x-csrf-token": csrf_token,
+        "sec-fetch-dest": "empty"
+    }
+
+    cookies = {
+        ".ROBLOSECURITY": cookie,
+        "GuestData": f"UserID={reporter_uid}", 
+    }
+
+    payload = {
+        "tags": {
+            "ENTRY_POINT": {"valueList": [{"data": "website"}]},
+            "REPORTED_ABUSE_CATEGORY": {"valueList": [{"data": "dating"}]},
+            "REPORTED_ABUSE_VECTOR": {"valueList": [{"data": "user_profile"}]},
+            "REPORTER_COMMENT": {"valueList": [{"data": "Inappropriate behavior"}]},
+            "SUBMITTER_USER_ID": {"valueList": [{"data": str(reporter_uid)}]},
+            "REPORT_TARGET_USER_ID": {"valueList": [{"data": str(target_uid)}]}
+        }
+    }
+    
+    for i in range(total_reports):
+        info(f"Sending report {i+1}/{total_reports} for {target_username}...")
+        try:
+            r = requests.post(
+                "https://apis.roblox.com/abuse-reporting/v1/abuse-reporting", 
+                url="https://apis.roblox.com/abuse-reporting/v1/abuse-reporting",
+                headers=headers,
+                cookies=cookies,
+                data=json.dumps(payload),
+                verify=config.VERIFY_SSL,
+                timeout=config.TIMEOUT
+            )
+            
+            if r.status_code in [200, 202]:
+                success(f"Report {i+1} sent successfully.")
+            else:
+                error(f"Report {i+1} failed: {r.status_code} {r.text}")
+                
+            time.sleep(0.5)
+            
+        except Exception as e:
+            error(f"Report request failed: {e}")
 
 def search_by_username(username):
     info(f"Searching Roblox UID for {username}")
@@ -152,10 +240,6 @@ def get_promo_channels(uid):
     return {}
 
 def get_friends_by_identifier(identifier, limit=500):
-    """
-    Resolves identifier to UID and fetches friends list directly.
-    Accepts optional limit.
-    """
     if identifier.isdigit():
         uid = identifier
     else:
@@ -164,19 +248,15 @@ def get_friends_by_identifier(identifier, limit=500):
     if uid is None:
         return {"error": "User not found"}
     
-    # Return the friends list directly with limit
     return get_entity_list(uid, "friends", limit=limit)
 
 def get_user_info(identifier, use_cache=True, **options):
     info(f"Starting Roblox lookup: {identifier}")
     
-    # Extract limit from options, default to 500
     limit = options.get("limit", 500)
 
     cached = read_cache(identifier)
     if cached:
-        # Note: Cache might not respect the new limit if previously cached with different size
-        # You might want to invalidate cache if limit is crucial, but leaving as is for now.
         return cached
         
     if identifier.isdigit():
