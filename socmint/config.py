@@ -1,4 +1,7 @@
-PROXY = None 
+PROXY = None
 TIMEOUT = 10
-VERIFY_SSL = True 
+VERIFY_SSL = True
 COOKIES = {}
+
+USE_MULTI = True
+MAX_WORKERS = 8
